@@ -86,7 +86,7 @@ def extract_expense_details(parts: list[types.Part]) -> dict:
         )
     )
 
-    response = genai_client.generate_content(
+    response = genai_client.models.generate_content(
         model=GEMINI_MODEL,
         contents=parts,
         config=config
@@ -148,20 +148,22 @@ async def handle_telegram_webhook(request: Request):
             
         # B. HANDLE EXPENSE INPUT (Text or Photo)
         
-        gemini_parts = []
+        # B. HANDLE EXPENSE INPUT (Photo, Document, or Text)
         
+        gemini_parts = []
+        file_id = None
+        caption_text = None
+
         if 'photo' in message:
-            # Get the highest resolution photo (last item in array)
+            # Get the highest resolution photo
             file_id = message['photo'][-1]['file_id']
-            # Download file bytes and add to Gemini parts
-            image_bytes = download_telegram_file(file_id)
-            gemini_parts.append(types.Part.from_bytes(data=image_bytes.read(), mime_type='image/jpeg'))
+            caption_text = message.get('caption')
             
-            # Use caption as additional text prompt (e.g., "Lunch bill, use this total")
-            if 'caption' in message:
-                gemini_parts.append(message['caption'])
-            else:
-                gemini_parts.append("Extract expense details from this bill/receipt image.")
+        elif 'document' in message:
+            # Handle image sent as a document (e.g., non-compressed file)
+            file_id = message['document']['file_id']
+            # We assume it's an image, or let Gemini handle the file type error later
+            caption_text = message.get('caption')
             
         elif 'text' in message:
             # Natural language input
@@ -170,6 +172,21 @@ async def handle_telegram_webhook(request: Request):
         else:
             send_telegram_message(chat_id, "*Input Error*: Please send a bill image or write your expense (e.g., '150 food pizza').")
             return {"status": "ok"}
+            
+        # If a file was found (photo or document), prepare the Gemini parts
+        if file_id:
+            try:
+                image_bytes = download_telegram_file(file_id)
+                gemini_parts.append(types.Part.from_bytes(data=image_bytes.read(), mime_type='image/jpeg'))
+                
+                # Use caption or default text
+                if caption_text:
+                    gemini_parts.append(caption_text)
+                else:
+                    gemini_parts.append("Extract expense details from this bill/receipt image.")
+            except Exception as e:
+                send_telegram_message(chat_id, f"⚠️ *File Download Error*: Could not retrieve file from Telegram. Check Vercel logs. Details: {str(e)}")
+                return {"status": "ok"}
             
         # 1. Extract JSON using Gemini
         extracted_data = extract_expense_details(gemini_parts)
