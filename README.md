@@ -35,7 +35,7 @@ Use the command menu (visible when typing `/`) for instant summaries:
 
 ---
 👉 If you want to give a try:
-* **Telegram Bot Username:** @expense_tracker_nayan90k_bot
+* **Telegram Bot Username:** [Bot Link](https://t.me/expense_tracker_nayan90k_bot)
 ---
 
 ## 💻 Developer Setup Guide (Self-Hosting)
