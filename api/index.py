@@ -24,6 +24,10 @@ APPWRITE_API_KEY = os.environ.get("APPWRITE_API_KEY")
 APPWRITE_DATABASE_ID = os.environ.get("APPWRITE_DATABASE_ID") # e.g., 'default'
 APPWRITE_COLLECTION_ID = os.environ.get("APPWRITE_COLLECTION_ID") # e.g., 'expenses'
 
+# --- NEW CONSTANTS FOR LIMITS ---
+MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024 # 5 MB
+MAX_TEXT_CHARS = 500
+
 # Initialize Appwrite Client
 appwrite_client = Client()
 appwrite_client.set_endpoint(APPWRITE_ENDPOINT)
@@ -155,19 +159,38 @@ async def handle_telegram_webhook(request: Request):
         caption_text = None
 
         if 'photo' in message:
-            # Get the highest resolution photo
-            file_id = message['photo'][-1]['file_id']
+            # Get the highest resolution photo (last item in array)
+            photo_data = message['photo'][-1]
+            
+            # --- FILE SIZE CHECK (PHOTO) ---
+            if photo_data.get('file_size', 0) > MAX_FILE_SIZE_BYTES:
+                send_telegram_message(chat_id, f"❌ *File Too Large!* The uploaded file size ({photo_data.get('file_size', 0) / 1024 / 1024:.2f} MB) exceeds the limit of {MAX_FILE_SIZE_BYTES / 1024 / 1024:.0f} MB. Please send a smaller file.")
+                return {"status": "ok"}
+            
+            file_id = photo_data['file_id']
             caption_text = message.get('caption')
             
         elif 'document' in message:
-            # Handle image sent as a document (e.g., non-compressed file)
-            file_id = message['document']['file_id']
-            # We assume it's an image, or let Gemini handle the file type error later
+            # Handle image sent as a document
+            doc_data = message['document']
+            
+            # --- FILE SIZE CHECK (DOCUMENT) ---
+            if doc_data.get('file_size', 0) > MAX_FILE_SIZE_BYTES:
+                send_telegram_message(chat_id, f"❌ *File Too Large!* The uploaded file size ({doc_data.get('file_size', 0) / 1024 / 1024:.2f} MB) exceeds the limit of {MAX_FILE_SIZE_BYTES / 1024 / 1024:.0f} MB. Please send a smaller file.")
+                return {"status": "ok"}
+            
+            file_id = doc_data['file_id']
             caption_text = message.get('caption')
             
         elif 'text' in message:
-            # Natural language input
-            gemini_parts.append(message['text'])
+            # --- TEXT SIZE CHECK ---
+            text_input = message['text']
+            if len(text_input) > MAX_TEXT_CHARS:
+                send_telegram_message(chat_id, f"❌ *Text Too Long!* Your input has {len(text_input)} characters, exceeding the limit of {MAX_TEXT_CHARS}. Please summarize your expense details.")
+                return {"status": "ok"}
+                
+            # Natural language input (proceed if size is fine)
+            gemini_parts.append(text_input)
             
         else:
             send_telegram_message(chat_id, "*Input Error*: Please send a bill image or write your expense (e.g., '150 food pizza').")
@@ -181,6 +204,11 @@ async def handle_telegram_webhook(request: Request):
                 
                 # Use caption or default text
                 if caption_text:
+                    # --- CAPTION SIZE CHECK (if photo/document has a caption) ---
+                    if len(caption_text) > MAX_TEXT_CHARS:
+                        send_telegram_message(chat_id, f"❌ *Caption Too Long!* Your caption has {len(caption_text)} characters, exceeding the limit of {MAX_TEXT_CHARS}. Please shorten your description.")
+                        return {"status": "ok"}
+                        
                     gemini_parts.append(caption_text)
                 else:
                     gemini_parts.append("Extract expense details from this bill/receipt image.")
