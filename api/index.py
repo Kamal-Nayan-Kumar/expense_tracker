@@ -218,8 +218,6 @@ async def handle_telegram_webhook(request: Request):
             f"*Category*: `{expense_data['category']}`\n"
             f"*Amount*: ₹`{expense_data['amount']:.2f}`\n"
             f"*Description*: `{expense_data['description']}`\n\n"
-            f"--- *JSON Data* ---\n"
-            f"`{json.dumps(extracted_data, indent=2)}`"
         )
         send_telegram_message(chat_id, response_text)
 
