@@ -147,10 +147,23 @@ async def handle_telegram_webhook(request: Request):
         # A. HANDLE COMMANDS (/daily, /week, /month)
         if 'text' in message and message['text'].startswith('/'):
             command = message['text'].lower()
-            if command in ['/daily', '/week', '/month']:
+            if command == '/start':
+                welcome_message = (
+                    "👋 *Welcome to your AI Expense Tracker!* 📊\n\n"
+                    "I help you track your spending effortlessly.\n\n"
+                    "**1. Record an Expense:**\n"
+                    "   - 📸 **Upload** any photo of a bill or receipt.\n"
+                    "   - 💬 **Type** in natural language (e.g., `220 pizza`, `paid 1500 for flight ticket`).\n\n"
+                    "**2. Get Reports (Use the menu or type):**\n"
+                    "   - /daily: See today's spending.\n"
+                    "   - /week: See this week's spending.\n"
+                    "   - /month: See this month's spending.\n\n"
+                )
+                send_telegram_message(chat_id, welcome_message)
+                return {"status": "ok"}
+            elif command in ['/daily', '/week', '/month']:
                 return await generate_report(chat_id, user_id, command)
-            
-        # B. HANDLE EXPENSE INPUT (Text or Photo)
+        
         
         # B. HANDLE EXPENSE INPUT (Photo, Document, or Text)
         
@@ -270,7 +283,7 @@ async def generate_report(chat_id: int, user_id: int, command: str):
         Query.equal("telegram_user_id", user_id),
         Query.greater_than_equal("created_at", start_time),
         Query.less_than_equal("created_at", end_time),
-        Query.limit(100) # Limit the results for safety
+        Query.limit(20) # Limit the results for safety
     ]
     
     try:
