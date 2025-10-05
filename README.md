@@ -33,9 +33,9 @@ Use the command menu (visible when typing `/`) for instant summaries:
 | `/week` | Shows total expenses and category breakdown for the **Current Week**. |
 | `/month` | Shows total expenses and category breakdown for the **Current Month**.
 
-
+---
 👉 If you want to give a try:
-Telegram bot username: @expense_tracker_nayan90k_bot
+* **Telegram Bot Username:** @expense_tracker_nayan90k_bot
 ---
 
 ## 💻 Developer Setup Guide (Self-Hosting)
