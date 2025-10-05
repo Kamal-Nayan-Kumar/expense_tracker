@@ -18,7 +18,7 @@ from google.genai import types
 # Replace placeholders with your actual keys and IDs
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
-APPWRITE_ENDPOINT = os.environ.get("APPWRITE_ENDPOINT", "https://cloud.appwrite.io/v1")
+APPWRITE_ENDPOINT = os.environ.get("APPWRITE_ENDPOINT")
 APPWRITE_PROJECT_ID = os.environ.get("APPWRITE_PROJECT_ID")
 APPWRITE_API_KEY = os.environ.get("APPWRITE_API_KEY")
 APPWRITE_DATABASE_ID = os.environ.get("APPWRITE_DATABASE_ID") # e.g., 'default'
@@ -33,7 +33,7 @@ appwrite_db = Databases(appwrite_client)
 
 # Initialize Gemini Client
 genai_client = genai.Client(api_key=GEMINI_API_KEY)
-GEMINI_MODEL = 'gemini-2.5-flash'
+GEMINI_MODEL = 'gemini-2.5-flash-lite'
 SYSTEM_INSTRUCTION = """
 You are an expert expense tracker API. Your sole function is to extract details from the provided image or text and return a single, valid JSON object.
 RULES:
@@ -117,6 +117,13 @@ def get_query_time_range(command: str) -> tuple[datetime, datetime]:
     return start_date.isoformat() + 'Z', end_date.isoformat() + 'Z'
 
 # --- 3. TELEGRAM WEBHOOK HANDLER ---
+
+# ADD THIS NEW FUNCTION:
+@app.get("/")
+def health_check():
+    """Simple GET endpoint for Vercel health check."""
+    return {"status": "Service is running", "message": "Listening for POST requests from Telegram..."}
+
 
 @app.post("/")
 async def handle_telegram_webhook(request: Request):
